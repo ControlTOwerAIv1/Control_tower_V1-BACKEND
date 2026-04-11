@@ -80,14 +80,21 @@ def get_avg_daily_sales(db: Session, days: int = 30) -> Dict[int, float]:
     _validate_days(days)
 
     try:
-        all_product_ids = [row[0] for row in db.query(Product.id).all()]
+        all_product_ids = [
+            row[0] for row in db.query(Product.id).filter(Product.status == 1).all()
+        ]
 
         if not all_product_ids:
-            logger.warning("No products found in the product table.")
+            logger.warning("No active products (status=1) found in the product table.")
             return {}
 
         end_date: date = date.today()
-        start_date: date = end_date - timedelta(days=days)
+        start_date: date = end_date - timedelta(days=days - 1)  # inclusive window of exactly `days` days
+
+        logger.info(
+            "Querying sales from %s to %s for %d active products.",
+            start_date, end_date, len(all_product_ids),
+        )
 
         sales_query = (
             db.query(
@@ -104,6 +111,8 @@ def get_avg_daily_sales(db: Session, days: int = 30) -> Dict[int, float]:
             .group_by(InvoiceDetails.product_id)
             .all()
         )
+
+        logger.info("Sales query returned %d product rows with sales.", len(sales_query))
 
         sales_lookup: Dict[int, float] = {
             row[0]: float(row[1]) for row in sales_query if row[0] is not None
@@ -143,7 +152,7 @@ def get_avg_for_product(db: Session, product_id: int, days: int = 30) -> float:
             return 0.0
 
         end_date: date = date.today()
-        start_date: date = end_date - timedelta(days=days)
+        start_date: date = end_date - timedelta(days=days - 1)  # inclusive window of exactly `days` days
 
         total_sold = (
             db.query(func.coalesce(func.sum(InvoiceDetails.quantity), 0))

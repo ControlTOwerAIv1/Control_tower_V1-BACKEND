@@ -6,7 +6,7 @@ FastAPI router for alert-related endpoints.
 Edge cases handled:
     - Snapshot unavailable → returns 503
     - Email alert fails → logged, status reported as failed
-    - WhatsApp alert fails → logged, status reported as failed
+    - Telegram alert fails → logged, status reported as failed
     - Both channels fail → still returns 200 with per-channel failure status
     - Snapshot has no critical items → alerts still sent (empty digest)
 
@@ -14,7 +14,7 @@ Input validations:
     - Snapshot must be available before generating alert content
 
 Assumptions NOT made:
-    - Not assuming email or WhatsApp always succeeds
+    - Not assuming email or Telegram always succeeds
     - Not assuming snapshot exists at any given moment
     - Not assuming alert infrastructure is always reachable
 """
@@ -26,7 +26,7 @@ from fastapi import APIRouter, HTTPException
 
 from cache.snapshot import get_snapshot
 from alerts.email_alert import send_email_alert
-from alerts.whatsapp_alert import send_whatsapp_alert
+from alerts.telegram_alert import send_telegram_alert
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ async def trigger_alerts() -> Dict[str, Any]:
 
     results: Dict[str, Any] = {
         "email": {"sent": False, "error": None},
-        "whatsapp": {"sent": False, "error": None},
+        "telegram": {"sent": False, "error": None},
     }
 
     # Email alert
@@ -118,22 +118,22 @@ async def trigger_alerts() -> Dict[str, Any]:
         logger.error("Email alert trigger failed: %s", exc, exc_info=True)
         results["email"]["error"] = str(exc)
 
-    # WhatsApp alert
+    # Telegram alert
     try:
-        whatsapp_success = send_whatsapp_alert(snapshot)
-        results["whatsapp"]["sent"] = whatsapp_success
-        if not whatsapp_success:
-            results["whatsapp"]["error"] = "WhatsApp send returned False — check logs."
+        telegram_success = send_telegram_alert(snapshot)
+        results["telegram"]["sent"] = telegram_success
+        if not telegram_success:
+            results["telegram"]["error"] = "Telegram send returned False — check logs."
     except Exception as exc:
-        logger.error("WhatsApp alert trigger failed: %s", exc, exc_info=True)
-        results["whatsapp"]["error"] = str(exc)
+        logger.error("Telegram alert trigger failed: %s", exc, exc_info=True)
+        results["telegram"]["error"] = str(exc)
 
-    overall = results["email"]["sent"] or results["whatsapp"]["sent"]
+    overall = results["email"]["sent"] or results["telegram"]["sent"]
 
     logger.info(
-        "Alert trigger completed — email: %s, whatsapp: %s",
+        "Alert trigger completed — email: %s, telegram: %s",
         results["email"]["sent"],
-        results["whatsapp"]["sent"],
+        results["telegram"]["sent"],
     )
 
     return {

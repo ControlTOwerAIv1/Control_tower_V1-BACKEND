@@ -99,12 +99,11 @@ def _format_stockout_risks(risks: List[Dict[str, Any]]) -> str:
 
     lines = [f"TOP STOCKOUT RISKS (by urgency, showing top {min(len(risks), _MAX_ITEMS_PER_SECTION)}):"]
     for item in risks[:_MAX_ITEMS_PER_SECTION]:
-        days_left = item.get("days_left", "N/A")
-        # Format infinity nicely
-        if isinstance(days_left, float) and days_left == float("inf"):
+        days_left = item.get("days_left")
+        if days_left is None:
             days_left_str = "∞ (no sales)"
         else:
-            days_left_str = f"{days_left}"
+            days_left_str = str(days_left)
 
         lines.append(
             f"  - ID {item.get('product_id', '?')}: {item.get('product_name', 'Unknown')} | "

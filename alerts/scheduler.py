@@ -41,7 +41,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy.orm import Session
 
 from alerts.email_alert import send_email_alert
-from alerts.whatsapp_alert import send_whatsapp_alert
+from alerts.telegram_alert import send_telegram_alert
 from cache.context_builder import refresh_context
 from cache.response_cache import invalidate_cache
 from cache.snapshot import get_snapshot, refresh_snapshot
@@ -203,14 +203,14 @@ def run_daily_alerts() -> None:
     except Exception as exc:
         logger.error("  Email alert EXCEPTION: %s", exc, exc_info=True)
 
-    # WhatsApp alert
+    # Telegram alert
     try:
-        whatsapp_result = send_whatsapp_alert(snapshot)
+        telegram_result = send_telegram_alert(snapshot)
         logger.info(
-            "  WhatsApp alert: %s", "SENT" if whatsapp_result else "FAILED"
+            "  Telegram alert: %s", "SENT" if telegram_result else "FAILED"
         )
     except Exception as exc:
-        logger.error("  WhatsApp alert EXCEPTION: %s", exc, exc_info=True)
+        logger.error("  Telegram alert EXCEPTION: %s", exc, exc_info=True)
 
     logger.info("[%s] Daily alert dispatch completed.", timestamp)
 

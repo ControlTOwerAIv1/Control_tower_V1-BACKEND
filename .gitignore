@@ -1,0 +1,41 @@
+# ── Virtual environments ──────────────────────────
+venv/
+myenv/
+.venv/
+env/
+
+# ── Python cache ──────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ── Environment variables (secrets) ───────────────
+.env
+.env.*
+
+
+# ── Logs ──────────────────────────────────────────
+*.log
+logs/
+
+# ── OS junk ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / editor ──────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ── pytest / coverage ─────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Build / dist ──────────────────────────────────
+dist/
+build/
+*.egg-info/

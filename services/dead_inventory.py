@@ -83,40 +83,61 @@ def _days_since(last_date: Optional[date]) -> Optional[int]:
 
 def run_dead_inventory_diagnostic(db: Session) -> None:
     """
-    Run raw COUNT queries to confirm invoice JOIN is finding data.
-    Remove this call from main.py once confirmed working.
+    Run raw SQL and ORM queries to confirm invoice JOIN and ORM mapping are working.
     """
     _validate_db_session(db)
 
     try:
+        from datetime import date as _date, timedelta as _timedelta
+
         total_details = db.execute(text("SELECT COUNT(*) FROM invoice_details")).scalar()
-        details_with_invoice_id = db.execute(
-            text("SELECT COUNT(*) FROM invoice_details WHERE invoice_id IS NOT NULL")
-        ).scalar()
         total_invoices = db.execute(text("SELECT COUNT(*) FROM invoice")).scalar()
-        invoices_with_date = db.execute(
-            text("SELECT COUNT(*) FROM invoice WHERE invoice_date IS NOT NULL")
-        ).scalar()
+        recent_invoices = db.execute(text(
+            "SELECT COUNT(*) FROM invoice WHERE invoice_date >= :d"
+        ), {"d": str(_date.today() - _timedelta(days=30))}).scalar()
+
+        # Raw SQL join (ground truth)
         joined_rows = db.execute(text("""
             SELECT COUNT(*)
             FROM invoice_details id2
             JOIN invoice i ON i.id = id2.invoice_id
-            WHERE id2.invoice_id IS NOT NULL
-              AND i.invoice_date IS NOT NULL
+            WHERE i.invoice_date IS NOT NULL
         """)).scalar()
 
-        logger.info("=== Dead Inventory JOIN Diagnostic ===")
-        logger.info("  invoice_details total rows      : %s", total_details)
-        logger.info("  invoice_details with invoice_id : %s", details_with_invoice_id)
-        logger.info("  invoice total rows              : %s", total_invoices)
-        logger.info("  invoice with date               : %s", invoices_with_date)
-        logger.info("  Rows surviving JOIN + filters   : %s", joined_rows)
-        logger.info("=======================================")
+        recent_joined = db.execute(text("""
+            SELECT COUNT(DISTINCT id2.product_id)
+            FROM invoice_details id2
+            JOIN invoice i ON i.id = id2.invoice_id
+            WHERE i.invoice_date >= :d
+        """), {"d": str(_date.today() - _timedelta(days=30))}).scalar()
+
+        # ORM version of the same query
+        orm_rows = (
+            db.query(
+                InvoiceDetails.product_id,
+                func.max(Invoice.invoice_date).label("last_sale"),
+            )
+            .join(Invoice, Invoice.id == InvoiceDetails.invoice_id)
+            .filter(Invoice.invoice_date.isnot(None))
+            .group_by(InvoiceDetails.product_id)
+            .all()
+        )
+
+        logger.info("=== Startup Diagnostic ===")
+        logger.info("  invoice rows                    : %s", total_invoices)
+        logger.info("  invoice_details rows            : %s", total_details)
+        logger.info("  invoices in last 30 days        : %s", recent_invoices)
+        logger.info("  Raw SQL joined rows             : %s", joined_rows)
+        logger.info("  Raw SQL distinct products (30d) : %s", recent_joined)
+        logger.info("  ORM query product rows          : %s", len(orm_rows))
+        logger.info("==========================")
 
         if joined_rows == 0:
-            logger.error("DIAGNOSTIC: Zero rows survived the JOIN. Check invoice_details.invoice_id -> invoice.id")
+            logger.error("DIAGNOSTIC: Raw SQL JOIN returned 0 rows — check invoice_details.invoice_id -> invoice.id")
+        elif len(orm_rows) == 0:
+            logger.error("DIAGNOSTIC: Raw SQL works (%s rows) but ORM returned 0 — SQLAlchemy mapping issue!", joined_rows)
         else:
-            logger.info("DIAGNOSTIC: JOIN working. %s matched rows found.", joined_rows)
+            logger.info("DIAGNOSTIC: OK — raw SQL=%s rows, ORM=%s product rows.", joined_rows, len(orm_rows))
 
     except Exception as exc:
         logger.error("Diagnostic query failed: %s", exc, exc_info=True)
@@ -202,7 +223,7 @@ def get_dead_inventory(db: Session, threshold_days: int = 60) -> List[Dict[str, 
     _validate_threshold_days(threshold_days)
 
     try:
-        products = db.query(Product.id, Product.name, Product.SKU).all()
+        products = db.query(Product.id, Product.name, Product.SKU).filter(Product.status == 1).all()
 
         if not products:
             logger.warning("No products found in the product table.")

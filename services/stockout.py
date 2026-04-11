@@ -31,7 +31,7 @@ Assumptions NOT made:
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -123,7 +123,7 @@ def get_current_stock_all(db: Session) -> Dict[int, float]:
 # Core calculation
 # ---------------------------------------------------------------------------
 
-def calculate_days_left(current_stock: float, avg_daily_sales: float) -> float:
+def calculate_days_left(current_stock: float, avg_daily_sales: float) -> Optional[float]:
     """
     Calculate how many days of stock remain at the current sales rate.
 
@@ -135,7 +135,8 @@ def calculate_days_left(current_stock: float, avg_daily_sales: float) -> float:
 
     Returns:
         - 0.0 if current_stock <= 0 (no stock on hand)
-        - float('inf') if avg_daily_sales <= 0 and stock > 0 (no depletion)
+        - None if avg_daily_sales <= 0 and stock > 0 (stock exists but no sales —
+          no depletion expected; None is JSON-safe and displayed as "∞")
         - Positive float otherwise (rounded to 2 decimal places)
 
     Raises:
@@ -158,9 +159,9 @@ def calculate_days_left(current_stock: float, avg_daily_sales: float) -> float:
     if current_stock <= 0:
         return 0.0
 
-    # No sales activity — stock will never deplete
+    # Stock exists but no sales history — no depletion expected
     if avg_daily_sales <= 0:
-        return float("inf")
+        return None
 
     return round(current_stock / avg_daily_sales, 2)
 
@@ -186,7 +187,7 @@ def _build_stock_records(
         List of dicts with full product stock detail.
     """
     # Fetch all products
-    products = db.query(Product.id, Product.name, Product.SKU).all()
+    products = db.query(Product.id, Product.name, Product.SKU).filter(Product.status == 1).all()
 
     if not products:
         logger.warning("No products found in the product table.")
@@ -201,6 +202,10 @@ def _build_stock_records(
         stock = stock_map.get(pid, 0.0)
         days_left = calculate_days_left(stock, avg)
 
+        # days_left is None when stock > 0 but avg = 0 (no depletion).
+        # None means "not at risk" — stock won't run out if nothing is selling.
+        is_risk = days_left is not None and days_left <= lead_time
+
         records.append(
             {
                 "product_id": pid,
@@ -210,7 +215,7 @@ def _build_stock_records(
                 "avg_daily_sales": avg,
                 "days_left": days_left,
                 "lead_time_days": lead_time,
-                "is_stockout_risk": days_left <= lead_time,
+                "is_stockout_risk": is_risk,
             }
         )
 
@@ -255,8 +260,9 @@ def get_stockout_risks(
 
         risks = [r for r in records if r["is_stockout_risk"]]
 
-        # Sort by urgency — fewest days left first
-        risks.sort(key=lambda r: r["days_left"])
+        # Sort by urgency — fewest days left first.
+        # days_left is never None for stockout risks (None means no depletion → not a risk).
+        risks.sort(key=lambda r: r["days_left"] if r["days_left"] is not None else float("inf"))
 
         logger.info(
             "Identified %d stockout risks out of %d products.",
@@ -301,8 +307,9 @@ def get_all_stock_levels(
     try:
         records = _build_stock_records(db, avg_sales, lead_time)
 
-        # Sort by days_left ascending — most urgent first
-        records.sort(key=lambda r: r["days_left"])
+        # Sort by days_left ascending — most urgent first.
+        # None (no depletion) goes to the end.
+        records.sort(key=lambda r: r["days_left"] if r["days_left"] is not None else float("inf"))
 
         logger.info("Computed stock levels for %d products.", len(records))
         return records

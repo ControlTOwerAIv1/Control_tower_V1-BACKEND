@@ -217,7 +217,7 @@ def get_reorder_recommendations(
 
     try:
         # Fetch all products
-        products = db.query(Product.id, Product.name, Product.SKU).all()
+        products = db.query(Product.id, Product.name, Product.SKU).filter(Product.status == 1).all()
 
         if not products:
             logger.warning("No products found in the product table.")
@@ -235,8 +235,9 @@ def get_reorder_recommendations(
             reorder_point = calculate_reorder_point(avg, lead_time)
             reorder_qty = calculate_reorder_quantity(avg, lead_time, stock, buffer_days)
 
-            # Only include products at or below reorder point
-            if stock <= reorder_point:
+            # Only include products at or below reorder point with a meaningful order qty.
+            # Skips avg=0/stock=0 cases where reorder_qty would be 0 (useless noise).
+            if stock <= reorder_point and reorder_qty > 0:
                 recommendations.append(
                     {
                         "product_id": pid,

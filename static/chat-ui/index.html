@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control Tower AI Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/chat-ui/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="side-panel">
+      <div class="brand-wrap">
+        <svg class="claude-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/>
+          <path d="M8 8h2v8H8zm6 0h2v8h-2z" fill="var(--bg-primary)"/>
+        </svg>
+        <h1>Control Tower</h1>
+        <svg class="inventory-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="7" width="14" height="10" rx="1" fill="currentColor"/>
+          <path d="M5 6h14M9 3h6v4H9z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+
+      <section class="samples-panel">
+        <p class="samples-title">Try these questions</p>
+        <div class="sample-list" id="sidebarSamples">
+          <button class="sample-chip" type="button" data-question="What's our current inventory health? How many SKUs are we tracking and what's our critical risk count?">Current health snapshot</button>
+          <button class="sample-chip" type="button" data-question="Which products are at critical stockout risk? Show me the items with the least days remaining.">Critical stockout items</button>
+          <button class="sample-chip" type="button" data-question="What are your top reorder recommendations right now with suggested quantities?">What to reorder now</button>
+          <button class="sample-chip" type="button" data-question="Identify products that are dead inventory - items that have never sold or haven't sold in a very long time.">Find dead inventory</button>
+          <button class="sample-chip" type="button" data-question="What are the top items at critical stockout risk? Include days left and daily sales rate.">Top stockout risks</button>
+          <button class="sample-chip" type="button" data-question="Which products are dead inventory that have never been sold or haven't moved in months?">Dead inventory analysis</button>
+          <button class="sample-chip" type="button" data-question="What are your top reorder recommendations with suggested order quantities?">Reorder recommendations</button>
+          <button class="sample-chip" type="button" data-question="Give me an overview of current inventory health including total SKUs and critical metrics.">Inventory health status</button>
+        </div>
+      </section>
+
+      <div class="panel-footnote">
+        <p>Connected to your live backend endpoint.</p>
+      </div>
+    </aside>
+
+    <main class="chat-panel">
+      <header class="chat-header">
+        <div>
+          <svg class="claude-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/>
+            <path d="M8 8h2v8H8zm6 0h2v8h-2z" fill="var(--bg-primary)"/>
+          </svg>
+          <h2>Control Tower</h2>
+        </div>
+        <div class="header-right">
+          <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode" type="button">
+            <svg class="sun-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+              <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
+              <line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2"/>
+              <line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2"/>
+              <line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2"/>
+              <line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <svg class="moon-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+          <span class="status-pill" id="statusPill">Ready</span>
+        </div>
+      </header>
+
+      <section class="messages" id="messages">
+        <article class="welcome-card" id="welcomeCard">
+          <h3>What would you like to analyze today?</h3>
+          <p>Ask about stockout risks, reorder priorities, dead inventory, and overall inventory health based on your latest data.</p>
+          <div class="welcome-grid" id="welcomeSamples">
+            <button type="button" class="welcome-question" data-question="What's our current inventory health? How many SKUs are we tracking and what's our critical risk count?">Current health snapshot</button>
+            <button type="button" class="welcome-question" data-question="Which products are at critical stockout risk? Show me the items with the least days remaining.">Critical stockout items</button>
+            <button type="button" class="welcome-question" data-question="What are your top reorder recommendations right now with suggested quantities?">What to reorder now</button>
+            <button type="button" class="welcome-question" data-question="Identify products that are dead inventory - items that have never sold or haven't sold in a very long time.">Find dead inventory</button>
+          </div>
+        </article>
+      </section>
+
+      <footer class="composer-wrap">
+        <form id="chatForm" class="composer-form">
+          <textarea id="questionInput" rows="1" placeholder="Message Control Tower AI" maxlength="2000" required></textarea>
+          <div class="composer-actions">
+            <span class="hint">Shift+Enter for a new line</span>
+            <button id="sendButton" type="submit">Send</button>
+          </div>
+        </form>
+      </footer>
+    </main>
+  </div>
+
+  <template id="messageTemplate">
+    <article class="message-row">
+      <div class="avatar"></div>
+      <div class="bubble-wrap">
+        <p class="speaker"></p>
+        <div class="bubble"></div>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/chat-ui/app.js" defer></script>
+</body>
+</html>

@@ -19,8 +19,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 try:
     from database import SessionLocal, get_db as db_dependency
@@ -152,6 +154,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 app.dependency_overrides[_inventory_db_placeholder] = db_dependency
 logger.info("✓ DB dependency override registered for inventory router.")
 
@@ -166,6 +174,14 @@ async def root() -> Dict[str, str]:
         "status": "running",
         "app": "KOL Inventory Control Tower",
     }
+
+
+@app.get("/chat", tags=["UI"])
+async def chat_ui() -> FileResponse:
+    chat_ui_path = os.path.join(STATIC_DIR, "chat-ui", "index.html")
+    if not os.path.isfile(chat_ui_path):
+        raise HTTPException(status_code=404, detail="Chat UI file not found.")
+    return FileResponse(chat_ui_path)
 
 
 @app.get("/health", tags=["Health"])

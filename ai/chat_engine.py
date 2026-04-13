@@ -35,12 +35,58 @@ import anthropic
 
 logger = logging.getLogger(__name__)
 
+
+def _ensure_gemini_available():
+    """Attempt to import Gemini library and raise error if unavailable."""
+    try:
+        import google.generativeai as genai
+        return genai
+    except ImportError as exc:
+        raise RuntimeError(
+            "Gemini API libraries not installed. "
+            "Install google-generativeai: pip install google-generativeai"
+        ) from exc
+
 # ---------------------------------------------------------------------------
 # Configuration (loaded from environment — never hardcoded)
 # ---------------------------------------------------------------------------
 
-_MODEL: str = "claude-sonnet-4-20250514"
-_MAX_TOKENS: int = 1000
+def _get_claude_model() -> str:
+    """Load Claude model from environment."""
+    model = os.getenv("CLAUDE_MODEL", "").strip()
+    if not model:
+        raise RuntimeError(
+            "CLAUDE_MODEL environment variable is not set or is empty. "
+            "Set it in .env before starting the application."
+        )
+    return model
+
+
+def _get_gemini_model() -> str:
+    """Load Gemini model from environment."""
+    model = os.getenv("GEMINI_MODEL", "").strip()
+    if not model:
+        raise RuntimeError(
+            "GEMINI_MODEL environment variable is not set or is empty. "
+            "Set it in .env before starting the application."
+        )
+    return model
+
+
+def _get_max_tokens() -> int:
+    """Load max tokens from environment."""
+    try:
+        tokens = os.getenv("AI_MAX_TOKENS", "").strip()
+        if not tokens:
+            raise RuntimeError(
+                "AI_MAX_TOKENS environment variable is not set or is empty. "
+                "Set it in .env before starting the application."
+            )
+        return int(tokens)
+    except ValueError:
+        raise RuntimeError(
+            f"AI_MAX_TOKENS must be a valid integer, got: {tokens}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -84,6 +130,25 @@ def _get_api_key() -> str:
     if not api_key:
         raise RuntimeError(
             "ANTHROPIC_API_KEY environment variable is not set or is empty. "
+            "Set it before starting the application."
+        )
+    return api_key
+
+
+def _get_gemini_api_key() -> str:
+    """
+    Load the Gemini API key from the environment.
+
+    Returns:
+        The API key string.
+
+    Raises:
+        RuntimeError: If GEMINI_API_KEY is not set or empty.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY environment variable is not set or is empty. "
             "Set it before starting the application."
         )
     return api_key
@@ -184,6 +249,70 @@ def parse_claude_response(response: Any) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Gemini response parser
+# ---------------------------------------------------------------------------
+
+def parse_gemini_response(response: Any) -> str:
+    """
+    Extract plain text from a Gemini API response.
+
+    Args:
+        response: The full API response object from Gemini.
+
+    Returns:
+        The text content as a clean string.
+
+    Raises:
+        RuntimeError: If the response is None, has no candidates, or contains
+                      no valid text blocks.
+    """
+    if response is None:
+        raise RuntimeError("Gemini API returned None response.")
+
+    # Gemini returns a GenerateContentResponse with candidates list
+    candidates = getattr(response, "candidates", None)
+
+    if not candidates:
+        raise RuntimeError(
+            "Gemini API response has no candidates."
+        )
+
+    # Get the first candidate
+    candidate = candidates[0]
+    content = getattr(candidate, "content", None)
+
+    if content is None:
+        raise RuntimeError(
+            "Gemini API candidate has no 'content' attribute."
+        )
+
+    # Extract text parts from candidate content
+    parts = getattr(content, "parts", None)
+    if not parts:
+        raise RuntimeError(
+            "Gemini API response content has no parts."
+        )
+
+    text_parts: List[str] = []
+    for part in parts:
+        text_value = getattr(part, "text", None)
+        if text_value:
+            text_parts.append(text_value)
+
+    if not text_parts:
+        raise RuntimeError(
+            "Gemini API response contained parts but none with text."
+        )
+
+    result = "\n".join(text_parts).strip()
+
+    if not result:
+        raise RuntimeError("Gemini API returned an empty text response.")
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Main API call
 # ---------------------------------------------------------------------------
 
@@ -211,16 +340,18 @@ def call_claude(context: str, question: str) -> str:
     api_key = _get_api_key()
     messages = build_messages_payload(context, question)
 
+    claude_model = _get_claude_model()
+    max_tokens = _get_max_tokens()
     logger.info(
-        "Calling Claude API (model=%s, max_tokens=%d) …", _MODEL, _MAX_TOKENS
+        "Calling Claude API (model=%s, max_tokens=%d) …", claude_model, max_tokens
     )
 
     try:
         client = anthropic.Anthropic(api_key=api_key)
 
         response = client.messages.create(
-            model=_MODEL,
-            max_tokens=_MAX_TOKENS,
+            model=claude_model,
+            max_tokens=max_tokens,
             system=context,
             messages=messages,
         )
@@ -256,4 +387,63 @@ def call_claude(context: str, question: str) -> str:
     # Parse and return
     answer = parse_claude_response(response)
     logger.info("Claude responded with %d characters.", len(answer))
+    return answer
+
+
+# ---------------------------------------------------------------------------
+# Gemini API call
+# ---------------------------------------------------------------------------
+
+def call_gemini(context: str, question: str) -> str:
+    """
+    Call the Gemini API with the pre-built context and user question.
+
+    Args:
+        context: The structured context string from context_builder
+                 (injected as the system prompt).
+        question: The user's question.
+
+    Returns:
+        The text response from Gemini.
+
+    Raises:
+        TypeError: If context or question is not a string.
+        ValueError: If context or question is empty.
+        RuntimeError: If the API key is missing, the API call fails,
+                      or the response is malformed.
+    """
+    genai = _ensure_gemini_available()
+
+    context = _validate_non_empty_string(context, "context")
+    question = _validate_non_empty_string(question, "question")
+
+    api_key = _get_gemini_api_key()
+
+    gemini_model = _get_gemini_model()
+    max_tokens = _get_max_tokens()
+    logger.info(
+        "Calling Gemini API (model=%s, max_tokens=%d) …", gemini_model, max_tokens
+    )
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(gemini_model)
+
+        # Build the full prompt with context as system instruction
+        full_prompt = f"{context}\n\nUser Question: {question}"
+
+        response = model.generate_content(
+            full_prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=max_tokens,
+            ),
+        )
+
+    except Exception as exc:
+        logger.error("Gemini API error: %s", exc, exc_info=True)
+        raise RuntimeError(f"Gemini API error: {exc}") from exc
+
+    # Parse and return
+    answer = parse_gemini_response(response)
+    logger.info("Gemini responded with %d characters.", len(answer))
     return answer

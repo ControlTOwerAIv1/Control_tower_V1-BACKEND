@@ -1,0 +1,37 @@
+### Test AI Chat Endpoint
+POST http://localhost:8000/api/chat
+Content-Type: application/json
+
+{
+  "question": "What are the top stockout risks?"
+}
+
+###
+
+### Get Inventory Overview
+POST http://localhost:8000/api/chat
+Content-Type: application/json
+
+{
+  "question": "Give me a summary of the current inventory status"
+}
+
+###
+
+### Ask About Reorder Recommendations
+POST http://localhost:8000/api/chat
+Content-Type: application/json
+
+{
+  "question": "Which items should we reorder urgently?"
+}
+
+###
+
+### Check Dead Inventory
+POST http://localhost:8000/api/chat
+Content-Type: application/json
+
+{
+  "question": "What dead or slow-moving inventory do we have?"
+}

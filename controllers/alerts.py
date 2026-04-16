@@ -1,5 +1,5 @@
 """
-routers/alerts.py
+controllers/alerts.py
 ==================
 FastAPI router for alert-related endpoints.
 

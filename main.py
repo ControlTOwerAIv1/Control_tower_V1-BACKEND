@@ -39,10 +39,10 @@ except ImportError as exc:
     raise
 
 try:
-    from cache.context_builder import get_current_context, refresh_context
-    logger.info("✓ cache.context_builder module loaded.")
+    from rag.context_builder import get_current_context, refresh_context
+    logger.info("✓ rag.context_builder module loaded.")
 except ImportError as exc:
-    logger.critical("FAILED to import cache.context_builder module: %s", exc, exc_info=True)
+    logger.critical("FAILED to import rag.context_builder module: %s", exc, exc_info=True)
     raise
 
 try:
@@ -53,25 +53,25 @@ except ImportError as exc:
     raise
 
 try:
-    from routers.inventory import router as inventory_router
-    from routers.inventory import _get_db as _inventory_db_placeholder
-    logger.info("✓ routers.inventory module loaded.")
+    from controllers.inventory import router as inventory_router
+    from controllers.inventory import _get_db as _inventory_db_placeholder
+    logger.info("✓ controllers.inventory module loaded.")
 except ImportError as exc:
-    logger.critical("FAILED to import routers.inventory module: %s", exc, exc_info=True)
+    logger.critical("FAILED to import controllers.inventory module: %s", exc, exc_info=True)
     raise
 
 try:
-    from routers.alerts import router as alerts_router
-    logger.info("✓ routers.alerts module loaded.")
+    from controllers.alerts import router as alerts_router
+    logger.info("✓ controllers.alerts module loaded.")
 except ImportError as exc:
-    logger.critical("FAILED to import routers.alerts module: %s", exc, exc_info=True)
+    logger.critical("FAILED to import controllers.alerts module: %s", exc, exc_info=True)
     raise
 
 try:
-    from routers.chat import router as chat_router
-    logger.info("✓ routers.chat module loaded.")
+    from controllers.chat import router as chat_router
+    logger.info("✓ controllers.chat module loaded.")
 except ImportError as exc:
-    logger.critical("FAILED to import routers.chat module: %s", exc, exc_info=True)
+    logger.critical("FAILED to import controllers.chat module: %s", exc, exc_info=True)
     raise
 
 

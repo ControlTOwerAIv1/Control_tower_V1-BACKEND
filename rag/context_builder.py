@@ -1,24 +1,7 @@
 """
-cache/context_builder.py
-=========================
-Takes the in-memory snapshot and formats it into a structured plain-text
-context string that is injected into every Claude API call as the system
-prompt.  Rebuilt once per snapshot refresh — NOT per user query.
-
-Edge cases handled:
-    - Snapshot is None or empty → raises RuntimeError
-    - Snapshot missing expected keys → handled with .get() and defaults
-    - Huge inventory (hundreds of SKUs) → truncated to top 20 per section
-    - Context never built → get_current_context() raises RuntimeError
-    - Stockout/reorder lists are empty → section says "None at this time"
-
-Input validations:
-    - snapshot must be a non-None, non-empty dict
-
-Assumptions NOT made:
-    - Not assuming snapshot always contains all expected keys
-    - Not assuming inventory is small enough to embed completely
-    - Not assuming context string length is always safe for Claude's window
+rag/context_builder.py
+===============================
+Builds and stores the current prompt context string used by the RAG layer.
 """
 
 import logging
@@ -27,32 +10,13 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Module-level state
-# ---------------------------------------------------------------------------
-
 _context_string: Optional[str] = None
 _context_lock = threading.Lock()
 
-# Maximum items to include per section to stay within context window limits
 _MAX_ITEMS_PER_SECTION: int = 20
 
 
-# ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
-
 def _validate_snapshot(snapshot: Dict[str, Any]) -> None:
-    """
-    Validate that the snapshot is a non-None, non-empty dict.
-
-    Args:
-        snapshot: The inventory snapshot to validate.
-
-    Raises:
-        TypeError: If snapshot is not a dict.
-        ValueError: If snapshot is empty.
-    """
     if snapshot is None:
         raise TypeError("snapshot must not be None")
     if not isinstance(snapshot, dict):
@@ -61,20 +25,7 @@ def _validate_snapshot(snapshot: Dict[str, Any]) -> None:
         raise ValueError("snapshot must not be empty")
 
 
-# ---------------------------------------------------------------------------
-# Formatting helpers
-# ---------------------------------------------------------------------------
-
 def _format_summary(summary: Dict[str, Any]) -> str:
-    """
-    Format the summary section of the context string.
-
-    Args:
-        summary: The summary dict from the snapshot.
-
-    Returns:
-        Formatted summary block as a string.
-    """
     return (
         "SUMMARY:\n"
         f"  Total SKUs tracked: {summary.get('total_skus', 'N/A')}\n"
@@ -85,25 +36,15 @@ def _format_summary(summary: Dict[str, Any]) -> str:
 
 
 def _format_stockout_risks(risks: List[Dict[str, Any]]) -> str:
-    """
-    Format the stockout risks section, limited to top N items.
-
-    Args:
-        risks: List of stockout risk dicts from the snapshot.
-
-    Returns:
-        Formatted stockout risks block.
-    """
     if not risks:
         return "TOP STOCKOUT RISKS (by urgency):\n  None at this time.\n"
 
-    lines = [f"TOP STOCKOUT RISKS (by urgency, showing top {min(len(risks), _MAX_ITEMS_PER_SECTION)}):"]
+    lines = [
+        f"TOP STOCKOUT RISKS (by urgency, showing top {min(len(risks), _MAX_ITEMS_PER_SECTION)}):"
+    ]
     for item in risks[:_MAX_ITEMS_PER_SECTION]:
         days_left = item.get("days_left")
-        if days_left is None:
-            days_left_str = "∞ (no sales)"
-        else:
-            days_left_str = str(days_left)
+        days_left_str = "inf (no sales)" if days_left is None else str(days_left)
 
         lines.append(
             f"  - ID {item.get('product_id', '?')}: {item.get('product_name', 'Unknown')} | "
@@ -114,25 +55,18 @@ def _format_stockout_risks(risks: List[Dict[str, Any]]) -> str:
         )
 
     if len(risks) > _MAX_ITEMS_PER_SECTION:
-        lines.append(f"  … and {len(risks) - _MAX_ITEMS_PER_SECTION} more.")
+        lines.append(f"  ... and {len(risks) - _MAX_ITEMS_PER_SECTION} more.")
 
     return "\n".join(lines) + "\n"
 
 
 def _format_reorder_recommendations(recommendations: List[Dict[str, Any]]) -> str:
-    """
-    Format the reorder recommendations section, limited to top N items.
-
-    Args:
-        recommendations: List of reorder recommendation dicts.
-
-    Returns:
-        Formatted reorder block.
-    """
     if not recommendations:
         return "TOP REORDER RECOMMENDATIONS:\n  None at this time.\n"
 
-    lines = [f"TOP REORDER RECOMMENDATIONS (showing top {min(len(recommendations), _MAX_ITEMS_PER_SECTION)}):"]
+    lines = [
+        f"TOP REORDER RECOMMENDATIONS (showing top {min(len(recommendations), _MAX_ITEMS_PER_SECTION)}):"
+    ]
     for item in recommendations[:_MAX_ITEMS_PER_SECTION]:
         lines.append(
             f"  - ID {item.get('product_id', '?')}: {item.get('product_name', 'Unknown')} | "
@@ -145,27 +79,18 @@ def _format_reorder_recommendations(recommendations: List[Dict[str, Any]]) -> st
         )
 
     if len(recommendations) > _MAX_ITEMS_PER_SECTION:
-        lines.append(
-            f"  … and {len(recommendations) - _MAX_ITEMS_PER_SECTION} more."
-        )
+        lines.append(f"  ... and {len(recommendations) - _MAX_ITEMS_PER_SECTION} more.")
 
     return "\n".join(lines) + "\n"
 
 
 def _format_dead_inventory(dead: List[Dict[str, Any]]) -> str:
-    """
-    Format the dead / slow-moving inventory section, limited to top N items.
-
-    Args:
-        dead: List of dead inventory dicts.
-
-    Returns:
-        Formatted dead inventory block.
-    """
     if not dead:
         return "DEAD OR SLOW-MOVING INVENTORY:\n  None at this time.\n"
 
-    lines = [f"DEAD OR SLOW-MOVING INVENTORY (showing top {min(len(dead), _MAX_ITEMS_PER_SECTION)}):"]
+    lines = [
+        f"DEAD OR SLOW-MOVING INVENTORY (showing top {min(len(dead), _MAX_ITEMS_PER_SECTION)}):"
+    ]
     for item in dead[:_MAX_ITEMS_PER_SECTION]:
         never_sold = item.get("never_sold", False)
         if never_sold:
@@ -182,18 +107,12 @@ def _format_dead_inventory(dead: List[Dict[str, Any]]) -> str:
         )
 
     if len(dead) > _MAX_ITEMS_PER_SECTION:
-        lines.append(f"  … and {len(dead) - _MAX_ITEMS_PER_SECTION} more.")
+        lines.append(f"  ... and {len(dead) - _MAX_ITEMS_PER_SECTION} more.")
 
     return "\n".join(lines) + "\n"
 
 
 def _build_instruction_block() -> str:
-    """
-    Build the instruction block that tells Claude how to behave.
-
-    Returns:
-        The instruction string appended to every context.
-    """
     return (
         "INSTRUCTIONS:\n"
         "  Answer only using the data provided above.\n"
@@ -206,28 +125,7 @@ def _build_instruction_block() -> str:
     )
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
 def build_context_string(snapshot: Dict[str, Any]) -> str:
-    """
-    Format the snapshot into a structured plain-text context string for Claude.
-
-    The resulting string serves as the system prompt for every Claude API
-    call, providing the AI with current inventory data.
-
-    Args:
-        snapshot: The inventory snapshot dict from cache/snapshot.py.
-
-    Returns:
-        A formatted plain-text string containing summary, stockout risks,
-        reorder recommendations, dead inventory, and behaviour instructions.
-
-    Raises:
-        TypeError: If snapshot is not a dict or is None.
-        ValueError: If snapshot is empty.
-    """
     _validate_snapshot(snapshot)
 
     try:
@@ -266,15 +164,6 @@ def build_context_string(snapshot: Dict[str, Any]) -> str:
 
 
 def get_current_context() -> str:
-    """
-    Return the currently stored context string.
-
-    Returns:
-        The context string most recently built by refresh_context().
-
-    Raises:
-        RuntimeError: If no context has been built yet.
-    """
     if _context_string is None:
         raise RuntimeError(
             "No context string available. The context has not been built yet. "
@@ -284,19 +173,6 @@ def get_current_context() -> str:
 
 
 def refresh_context(snapshot: Dict[str, Any]) -> None:
-    """
-    Rebuild and store the context string from a new snapshot.
-
-    Thread-safe: uses a lock so concurrent calls do not produce a
-    half-written context string.
-
-    Args:
-        snapshot: The new inventory snapshot dict.
-
-    Raises:
-        TypeError: If snapshot is not a dict or is None.
-        ValueError: If snapshot is empty.
-    """
     global _context_string
 
     _validate_snapshot(snapshot)

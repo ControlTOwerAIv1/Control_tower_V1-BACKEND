@@ -1,5 +1,5 @@
 """
-routers/chat.py
+controllers/chat.py
 ================
 FastAPI router exposing the chatbot endpoint.
 
@@ -26,7 +26,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
-from ai.query_router import is_cache_hit, route_query
+from rag.query_router import is_cache_hit, route_query
 
 logger = logging.getLogger(__name__)
 

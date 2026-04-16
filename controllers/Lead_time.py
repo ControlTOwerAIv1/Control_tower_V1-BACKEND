@@ -1,5 +1,5 @@
 """
-routers/lead_time.py
+controllers/lead_time.py
 =====================
 Endpoints to read and update the global lead time setting.
 
@@ -29,7 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from cache.context_builder import refresh_context
+from rag.context_builder import refresh_context
 from cache.snapshot import get_snapshot, refresh_snapshot
 from models import LeadTimeSetting
 from services.avg_daily_sales import get_global_lead_time

@@ -1,6 +1,5 @@
 # ── Virtual environments ──────────────────────────
 venv/
-myenv/
 .venv/
 env/
 

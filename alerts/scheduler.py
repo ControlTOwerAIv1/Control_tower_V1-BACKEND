@@ -42,8 +42,8 @@ from sqlalchemy.orm import Session
 
 from alerts.email_alert import send_email_alert
 from alerts.telegram_alert import send_telegram_alert
-from cache.context_builder import refresh_context
-from cache.response_cache import invalidate_cache
+from rag.context_builder import refresh_context
+from rag.response_cache import invalidate_cache
 from cache.snapshot import get_snapshot, refresh_snapshot
 
 logger = logging.getLogger(__name__)

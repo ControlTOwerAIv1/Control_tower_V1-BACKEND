@@ -1,5 +1,5 @@
 """
-routers/inventory.py
+controllers/inventory.py
 =====================
 FastAPI router exposing inventory data endpoints.  All endpoints read from
 the in-memory snapshot — no direct DB calls in router functions.
@@ -26,7 +26,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from cache.context_builder import refresh_context
+from rag.context_builder import refresh_context
 from cache.snapshot import get_snapshot, refresh_snapshot
 
 logger = logging.getLogger(__name__)

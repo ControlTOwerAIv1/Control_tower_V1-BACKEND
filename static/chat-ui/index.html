@@ -39,7 +39,7 @@
       </section>
 
       <div class="panel-footnote">
-        <p>Connected to your live backend endpoint.</p>
+        <p>Powered by OpenAI Embeddings and Google Gemini.</p>
       </div>
     </aside>
 
@@ -108,6 +108,17 @@
     </article>
   </template>
 
+  <div id="sourcesModal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h4>Sources</h4>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="/static/chat-ui/app.js" defer></script>
 </body>
 </html>

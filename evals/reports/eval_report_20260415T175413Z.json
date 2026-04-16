@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "run_at": "2026-04-15T17:54:13.337187+00:00",
+    "base_url": "http://localhost:8000",
+    "endpoint": "/api/chat",
+    "eval_file": "evals\\inventory_qa_eval_set.json",
+    "total": 1,
+    "http_success_count": 0,
+    "answer_success_count": 0,
+    "citation_count": 0,
+    "http_success_rate": 0.0,
+    "answer_success_rate": 0.0,
+    "citation_coverage_rate": 0.0,
+    "overall_pass": false
+  },
+  "results": [
+    {
+      "id": 1,
+      "question": "What are the top 5 stockout risks right now?",
+      "status_code": 0,
+      "ok_http": false,
+      "has_answer": false,
+      "has_citation": false,
+      "from_cache": null,
+      "latency_ms": 0,
+      "error": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>",
+      "answer_preview": ""
+    }
+  ]
+}

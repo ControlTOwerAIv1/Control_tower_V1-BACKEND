@@ -8,6 +8,59 @@ const welcomeCard = document.getElementById("welcomeCard");
 const themeToggle = document.getElementById("themeToggle");
 const sunIcon = document.querySelector(".sun-icon");
 const moonIcon = document.querySelector(".moon-icon");
+const sourcesModal = document.getElementById("sourcesModal");
+const modalBody = document.getElementById("modalBody");
+const modalClose = document.getElementById("modalClose");
+
+function extractSources(text) {
+  const match = text.match(/\n*Sources:\s*(.+)$/s);
+  if (!match) return { content: text, sources: null };
+  const content = text.slice(0, text.indexOf(match[0])).trim();
+  return { content, sources: match[1].trim() };
+}
+
+function parseSources(sourcesStr) {
+  // Format: S1=services.foo/bar, S2=services.baz/qux,...
+  const items = [];
+  const parts = sourcesStr.split(/,\s*(?=S\d+=)/);
+  for (const part of parts) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    const id = part.slice(0, eq).trim();
+    const value = part.slice(eq + 1).trim();
+    items.push({ id, value });
+  }
+  return items;
+}
+
+function showSourcesModal(sourcesStr, content) {
+  let items = parseSources(sourcesStr);
+
+  // Filter to only sources actually cited in the content ([S1], [S2], etc.)
+  const cited = new Set([...content.matchAll(/\[S(\d+)\]/g)].map(m => `S${m[1]}`));
+  if (cited.size > 0) {
+    items = items.filter(item => cited.has(item.id));
+  }
+
+  // Deduplicate by id+value
+  const seen = new Set();
+  items = items.filter(({ id, value }) => {
+    const key = id + value;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  modalBody.innerHTML = items.map(({ id, value }) =>
+    `<div class="source-item"><span class="source-id">${id}</span>${value}</div>`
+  ).join("");
+  sourcesModal.hidden = false;
+}
+
+modalClose.addEventListener("click", () => { sourcesModal.hidden = true; });
+sourcesModal.addEventListener("click", (e) => {
+  if (e.target === sourcesModal) sourcesModal.hidden = true;
+});
 
 const sampleButtons = document.querySelectorAll("[data-question]");
 
@@ -80,8 +133,18 @@ function createMessage(role, content, isLoading = false) {
   if (isLoading) {
     bubble.classList.add("loading");
     bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
-  } else {
+  } else if (role === "user") {
     bubble.textContent = content;
+  } else {
+    const { content: mainContent, sources } = extractSources(content);
+    bubble.innerHTML = marked.parse(mainContent);
+    if (sources) {
+      const btn = document.createElement("button");
+      btn.className = "sources-btn";
+      btn.textContent = "Sources";
+      btn.addEventListener("click", () => showSourcesModal(sources, mainContent));
+      fragment.querySelector(".bubble-wrap").appendChild(btn);
+    }
   }
 
   messages.appendChild(fragment);
@@ -120,9 +183,17 @@ async function askQuestion(questionText) {
       throw new Error(errorMessage);
     }
 
-    const answer = (payload.answer || "No answer returned.").trim();
+    const rawAnswer = (payload.answer || "No answer returned.").trim();
+    const { content: mainContent, sources } = extractSources(rawAnswer);
     loadingBubble.classList.remove("loading");
-    loadingBubble.textContent = answer;
+    loadingBubble.innerHTML = marked.parse(mainContent);
+    if (sources) {
+      const btn = document.createElement("button");
+      btn.className = "sources-btn";
+      btn.textContent = "Sources";
+      btn.addEventListener("click", () => showSourcesModal(sources, mainContent));
+      loadingRow.querySelector(".bubble-wrap").appendChild(btn);
+    }
   } catch (error) {
     loadingBubble.classList.remove("loading");
     loadingBubble.textContent = `I could not get a response. ${error.message}`;
@@ -142,7 +213,12 @@ chatForm.addEventListener("submit", async (event) => {
 
 questionInput.addEventListener("input", autoResizeInput);
 questionInput.addEventListener("keydown", async (event) => {
-  if (event.key === "Enter" && !event.shiftKey) {
+  if (event.key === "Enter") {
+    if (event.shiftKey) {
+      // Allow Shift+Enter to insert a new line
+      return;
+    }
+    // Enter alone sends the message
     event.preventDefault();
     await askQuestion(questionInput.value);
   }

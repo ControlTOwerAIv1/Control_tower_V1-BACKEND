@@ -121,6 +121,28 @@ function removeWelcomeCard() {
   }
 }
 
+async function typeText(bubble, text, speed = 10) {
+  return new Promise(resolve => {
+    const words = text.split(/(\s+)/);
+    let i = 0;
+    bubble.classList.add("typing");
+
+    function tick() {
+      i++;
+      bubble.innerHTML = marked.parse(words.slice(0, i).join(""));
+      messages.scrollTop = messages.scrollHeight;
+      if (i < words.length) {
+        setTimeout(tick, speed);
+      } else {
+        bubble.classList.remove("typing");
+        resolve();
+      }
+    }
+
+    setTimeout(tick, speed);
+  });
+}
+
 function createMessage(role, content, isLoading = false) {
   const fragment = messageTemplate.content.cloneNode(true);
   const row = fragment.querySelector(".message-row");
@@ -186,7 +208,7 @@ async function askQuestion(questionText) {
     const rawAnswer = (payload.answer || "No answer returned.").trim();
     const { content: mainContent, sources } = extractSources(rawAnswer);
     loadingBubble.classList.remove("loading");
-    loadingBubble.innerHTML = marked.parse(mainContent);
+    await typeText(loadingBubble, mainContent);
     if (sources) {
       const btn = document.createElement("button");
       btn.className = "sources-btn";

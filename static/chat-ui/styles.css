@@ -334,6 +334,21 @@ body {
   padding: 8px 12px;
 }
 
+.bubble.typing::after {
+  content: "▋";
+  display: inline-block;
+  animation: blink-cursor 0.7s step-end infinite;
+  opacity: 1;
+  font-size: 0.9em;
+  vertical-align: baseline;
+  margin-left: 1px;
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .dot {
   width: 4px;
   height: 4px;

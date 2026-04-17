@@ -3,29 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Control Tower AI Chat</title>
+  <title>Control Tower AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/chat-ui/styles.css" />
 </head>
 <body>
   <div class="app-shell">
+
+    <!-- ── Sidebar ───────────────────────────────────────── -->
     <aside class="side-panel">
+
       <div class="brand-wrap">
-        <svg class="claude-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/>
-          <path d="M8 8h2v8H8zm6 0h2v8h-2z" fill="var(--bg-primary)"/>
-        </svg>
-        <h1>Control Tower</h1>
-        <svg class="inventory-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <rect x="5" y="7" width="14" height="10" rx="1" fill="currentColor"/>
-          <path d="M5 6h14M9 3h6v4H9z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-        </svg>
+        <div class="brand-icon">
+          <div class="bot-icon bot-small" aria-hidden="true">
+            <span class="bot-eye bot-eye-left">&gt;</span>
+            <span class="bot-eye bot-eye-right">&lt;</span>
+            <span class="bot-foot bot-foot-left"></span>
+            <span class="bot-foot bot-foot-right"></span>
+          </div>
+        </div>
+        <h1>Control Tower AI</h1>
       </div>
 
+      <div class="side-divider"></div>
+
       <section class="samples-panel">
-        <p class="samples-title">Try these questions</p>
+        <p class="samples-title">Quick questions</p>
         <div class="sample-list" id="sidebarSamples">
           <button class="sample-chip" type="button" data-question="What's our current inventory health? How many SKUs are we tracking and what's our critical risk count?">Current health snapshot</button>
           <button class="sample-chip" type="button" data-question="Which products are at critical stockout risk? Show me the items with the least days remaining.">Critical stockout items</button>
@@ -39,34 +44,35 @@
       </section>
 
       <div class="panel-footnote">
-        <p>Powered by OpenAI Embeddings and Google Gemini.</p>
+        <div class="live-dot"></div>
+        <p>Live data connected</p>
       </div>
     </aside>
 
+    <!-- ── Chat panel ─────────────────────────────────────── -->
     <main class="chat-panel">
+
       <header class="chat-header">
         <div>
-          <svg class="claude-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/>
-            <path d="M8 8h2v8H8zm6 0h2v8h-2z" fill="var(--bg-primary)"/>
-          </svg>
-          <h2>Control Tower</h2>
+          <div class="bot-icon bot-header" aria-hidden="true">
+            <span class="bot-eye bot-eye-left">&gt;</span>
+            <span class="bot-eye bot-eye-right">&lt;</span>
+            <span class="bot-foot bot-foot-left"></span>
+            <span class="bot-foot bot-foot-right"></span>
+          </div>
+          <h2>Inventory Intelligence</h2>
         </div>
         <div class="header-right">
           <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode" type="button">
-            <svg class="sun-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-              <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
-              <line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2"/>
-              <line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2"/>
-              <line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2"/>
-              <line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2"/>
+            <svg class="sun-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:none;" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
             </svg>
-            <svg class="moon-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2"/>
+            <svg class="moon-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
             </svg>
           </button>
           <span class="status-pill" id="statusPill">Ready</span>
@@ -75,7 +81,15 @@
 
       <section class="messages" id="messages">
         <article class="welcome-card" id="welcomeCard">
-          <h3>What would you like to analyze today?</h3>
+          <div class="welcome-icon">
+            <div class="bot-icon bot-welcome" aria-hidden="true">
+              <span class="bot-eye bot-eye-left">&gt;</span>
+              <span class="bot-eye bot-eye-right">&lt;</span>
+              <span class="bot-foot bot-foot-left"></span>
+              <span class="bot-foot bot-foot-right"></span>
+            </div>
+          </div>
+          <h3>What would you like to analyze?</h3>
           <p>Ask about stockout risks, reorder priorities, dead inventory, and overall inventory health based on your latest data.</p>
           <div class="welcome-grid" id="welcomeSamples">
             <button type="button" class="welcome-question" data-question="What's our current inventory health? How many SKUs are we tracking and what's our critical risk count?">Current health snapshot</button>
@@ -88,16 +102,23 @@
 
       <footer class="composer-wrap">
         <form id="chatForm" class="composer-form">
-          <textarea id="questionInput" rows="1" placeholder="Message Control Tower AI" maxlength="2000" required></textarea>
+          <textarea id="questionInput" rows="1" placeholder="Message Control Tower AI…" maxlength="2000" required></textarea>
           <div class="composer-actions">
             <span class="hint">Shift+Enter for a new line</span>
-            <button id="sendButton" type="submit">Send</button>
+            <button id="sendButton" type="submit">
+              Send
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" xmlns="http://www.w3.org/2000/svg">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2" fill="white" stroke="none"/>
+              </svg>
+            </button>
           </div>
         </form>
       </footer>
     </main>
   </div>
 
+  <!-- message template -->
   <template id="messageTemplate">
     <article class="message-row">
       <div class="avatar"></div>
@@ -108,6 +129,7 @@
     </article>
   </template>
 
+  <!-- sources modal -->
   <div id="sourcesModal" class="modal-overlay" hidden>
     <div class="modal-box">
       <div class="modal-header">

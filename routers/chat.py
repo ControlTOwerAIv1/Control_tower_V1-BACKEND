@@ -20,12 +20,15 @@ Assumptions NOT made:
     - Not assuming the answer is always non-empty
 """
 
+import asyncio
 import logging
+from functools import partial
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
+from ai.memory import clear_session
 from ai.query_router import is_cache_hit, route_query
 
 logger = logging.getLogger(__name__)
@@ -41,6 +44,7 @@ class ChatRequest(BaseModel):
     """Request body for the chat endpoint."""
 
     question: str
+    session_id: str = "default"
 
     @field_validator("question")
     @classmethod
@@ -86,7 +90,9 @@ async def chat(request: ChatRequest) -> Dict[str, Any]:
     was_cached = is_cache_hit(question)
 
     try:
-        answer = route_query(question)
+        answer = await asyncio.get_event_loop().run_in_executor(
+            None, partial(route_query, question, request.session_id)
+        )
     except (TypeError, ValueError) as exc:
         logger.warning("Chat request rejected: %s", exc)
         raise HTTPException(
@@ -116,3 +122,19 @@ async def chat(request: ChatRequest) -> Dict[str, Any]:
         "answer": answer,
         "from_cache": was_cached,
     }
+
+
+@router.delete("/chat/session/{session_id}")
+async def clear_chat_session(session_id: str) -> dict:
+    """
+    Clear all conversation history for the given session.
+
+    Args:
+        session_id: The session identifier to clear.
+
+    Returns:
+        Dict confirming the session was cleared.
+    """
+    clear_session(session_id)
+    logger.info("Cleared chat session: %s", session_id)
+    return {"cleared": True, "session_id": session_id}

@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # Configuration (loaded from environment — never hardcoded)
 # ---------------------------------------------------------------------------
 
-_MODEL: str = "claude-sonnet-4-20250514"
+_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 _MAX_TOKENS: int = 1000
 
 
@@ -216,12 +216,26 @@ def call_claude(context: str, question: str) -> str:
     )
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
 
         response = client.messages.create(
             model=_MODEL,
             max_tokens=_MAX_TOKENS,
-            system=context,
+            system=(
+                "You are an expert AI inventory analyst for KOL Distributor Toys.\n"
+                "\n"
+                "You have access to live inventory data including current stock levels, "
+                "stockout risks, reorder recommendations, and dead inventory alerts.\n"
+                "\n"
+                "Your job is to give clear, direct, and actionable answers. "
+                "When recommending reorders, always state the product name, current stock, "
+                "recommended order quantity, and reason.\n"
+                "When identifying risks, rank them by urgency.\n"
+                "If you do not have enough data to answer, say so clearly.\n"
+                "Never guess. Never fabricate product names or numbers.\n"
+                "\n"
+                + context
+            ),
             messages=messages,
         )
 

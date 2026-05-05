@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 try:
     from database import SessionLocal, get_db as db_dependency
@@ -152,6 +153,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 app.dependency_overrides[_inventory_db_placeholder] = db_dependency
 logger.info("✓ DB dependency override registered for inventory router.")
 

@@ -23,13 +23,14 @@ Assumptions NOT made:
 import asyncio
 import logging
 from functools import partial
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
 from ai.memory import clear_session
-from ai.query_router import is_cache_hit, route_query
+from ai.query_router import is_cache_hit, route_query, _is_sql_question
+from ai.sql_agent import run_sql_agent
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,8 @@ class ChatResponse(BaseModel):
 
     answer: str
     from_cache: bool
+    type: str = "text"
+    data: Optional[list] = None
 
 
 # ---------------------------------------------------------------------------
@@ -71,22 +74,53 @@ async def chat(request: ChatRequest) -> Dict[str, Any]:
     """
     Accept a user question and return an AI-generated answer.
 
-    The question is routed through the cache → Claude pipeline by
-    query_router.  If a cached answer exists, it is returned instantly.
+    Routes to SQL agent for data/query questions.
+    Routes to RAG cache -> Claude pipeline for general questions.
 
     Args:
         request: ChatRequest with a non-empty question string.
 
     Returns:
-        Dict with 'answer' (string) and 'from_cache' (bool).
+        Dict with 'answer', 'from_cache', 'type', and 'data'.
 
     Raises:
-        HTTPException: 400 if the question is invalid, 500 if the AI
-                       pipeline fails.
+        HTTPException: 400 if the question is invalid,
+                       500 if the pipeline fails.
     """
     question = request.question
 
-    # Check cache status before routing (for the from_cache flag)
+    # --- SQL Agent path ---
+    if _is_sql_question(question):
+        logger.info("Routing to SQL agent: %s", question)
+        try:
+            result = await run_sql_agent(question)
+        except Exception as exc:
+            logger.error("SQL agent error: %s", exc, exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"SQL agent failed: {exc}",
+            ) from exc
+
+        if result["type"] == "error":
+            raise HTTPException(
+                status_code=500,
+                detail=result["content"],
+            )
+
+        logger.info(
+            "SQL agent response returned (type=%s, answer_len=%d).",
+            result["type"],
+            len(result["content"]),
+        )
+
+        return {
+            "answer": result["content"],
+            "from_cache": False,
+            "type": result["type"],
+            "data": result.get("data"),
+        }
+
+    # --- RAG cache -> Claude path (existing logic, unchanged) ---
     was_cached = is_cache_hit(question)
 
     try:
@@ -121,6 +155,8 @@ async def chat(request: ChatRequest) -> Dict[str, Any]:
     return {
         "answer": answer,
         "from_cache": was_cached,
+        "type": "text",
+        "data": None,
     }
 
 

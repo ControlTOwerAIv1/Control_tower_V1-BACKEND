@@ -75,6 +75,38 @@ def _validate_question(question: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# SQL routing detection
+# ---------------------------------------------------------------------------
+
+def _is_sql_question(question: str) -> bool:
+    """
+    Detect whether a question should be routed to the SQL agent
+    instead of the RAG cache -> Claude pipeline.
+
+    Returns True if the question contains inventory data keywords
+    that require live database querying.
+    Returns False for general, conversational, or advisory questions.
+    """
+    if not isinstance(question, str) or not question.strip():
+        return False
+
+    lowered = question.lower()
+
+    sql_keywords = [
+        "how many", "which products", "list", "show me", "count",
+        "total", "sold", "sales", "stock level", "stock levels",
+        "chart", "graph", "bar chart", "bar graph", "visualize",
+        "top", "bottom", "compare", "rank", "least", "most",
+        "average", "sum", "last 30", "last week", "this month",
+        "this week", "out of stock", "below threshold", "dead inventory",
+        "not sold", "reorder", "quantity", "units", "table",
+        "show data", "give me data", "report",
+    ]
+
+    return any(keyword in lowered for keyword in sql_keywords)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
